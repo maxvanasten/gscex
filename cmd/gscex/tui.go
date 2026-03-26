@@ -41,8 +41,27 @@ type resultItem struct {
 	result search.Result
 }
 
-func (i resultItem) Title() string       { return fmt.Sprintf("%s:%d", i.result.File, i.result.Line) }
-func (i resultItem) Description() string { return i.result.Content }
+func (i resultItem) Title() string { return fmt.Sprintf("%s:%d", i.result.File, i.result.Line) }
+func (i resultItem) Description() string {
+	ctx := i.result.Context
+
+	// Need at least 6 lines from 7-line context (3 before + matched + 3 after)
+	// With default ContextLines=3, matched is at index 3, we want indices 1-5
+	if len(ctx) < 6 {
+		return i.result.Content
+	}
+
+	// Extract 5 lines: indices 1-5 from context [0, 1, 2, 3(MATCHED), 4, 5, 6]
+	before2 := ctx[1] // 2 lines before matched
+	before1 := ctx[2] // 1 line before matched
+	matched := ctx[3] // The matched line (center)
+	after1 := ctx[4]  // 1 line after matched
+	after2 := ctx[5]  // 2 lines after matched
+
+	// Format with matched line highlighted using >> prefix
+	return fmt.Sprintf("%s\n%s\n>> %s\n%s\n%s",
+		before2, before1, matched, after1, after2)
+}
 func (i resultItem) FilterValue() string { return i.result.File + i.result.Content }
 
 type fileItem struct {
@@ -106,8 +125,10 @@ func initialModel(gameFilter string) *model {
 	ti.Width = 50
 	m.searchInput = ti
 
-	// Initialize results list
-	m.resultsList = list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
+	// Initialize results list with custom delegate for multiline context
+	delegate := list.NewDefaultDelegate()
+	delegate.SetHeight(6) // 1 line for title + 5 lines for description with context
+	m.resultsList = list.New([]list.Item{}, delegate, 0, 0)
 	m.resultsList.Title = "Search Results"
 	m.resultsList.SetShowStatusBar(false)
 	m.resultsList.SetFilteringEnabled(false)
