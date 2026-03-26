@@ -1,21 +1,21 @@
 # GSC Explorer (gscex)
 
-A powerful CLI and TUI tool for exploring Call of Duty: Black Ops 1-2 (Plutonium T5/T6) GSC scripts. Search through thousands of stock script files containing 10,000+ functions instantly.
+A CLI and TUI tool for exploring Call of Duty: Black Ops 1-2 (Plutonium T5/T6) GSC scripts. Search through thousands of stock script files containing 10,000+ functions instantly.
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Go Version](https://img.shields.io/badge/go-1.21+-00ADD8.svg)
+![Go Version](https://img.shields.io/badge/go-1.23+-00ADD8.svg)
 ![Platform](https://img.shields.io/badge/platform-linux%20%7C%20macos%20%7C%20windows-lightgrey.svg)
 
 ## Features
 
-- 🔍 **Instant Search** - Find functions, methods, and text across all stock scripts
-- 🖥️ **Interactive TUI** - Browse with an intuitive terminal interface (vim-style keys)
-- 🎯 **Fuzzy Matching** - Search "giveweapon" finds "give_weapon" automatically
-- 📁 **File Browser** - Navigate the complete script hierarchy
-- 📄 **Code Preview** - View files with line highlighting and context
-- ⚡ **Async Loading** - Results stream in real-time
-- 🔧 **Multiple Modes** - Text search, function search, method search, file search
-- 📦 **Cross Platform** - Works on Linux, macOS, and Windows
+- **Interactive TUI** - Browse with a keyboard-driven terminal interface
+- **Instant Search** - Find functions, methods, and text across all stock scripts
+- **Context Display** - See 2 lines before/after matches with the matched line highlighted
+- **Fuzzy Matching** - Search "giveweapon" finds "give_weapon" automatically
+- **Multi-Game Support** - Search T5 (Black Ops 1) and T6 (Black Ops 2) simultaneously
+- **Code Preview** - View files with line highlighting
+- **JSON Output** - Export results for scripting with `--json`
+- **Cross Platform** - Works on Linux, macOS, and Windows
 
 ## Quick Start
 
@@ -23,14 +23,7 @@ A powerful CLI and TUI tool for exploring Call of Duty: Black Ops 1-2 (Plutonium
 
 #### Download Pre-built Binary
 
-Download the raw binary for your platform from the [Releases](https://github.com/maxvanasten/gscex/releases) page. No installation needed - just download and run!
-
-**Available binaries:**
-- `gscex-v1.0.0-linux-amd64` - Linux x86_64
-- `gscex-v1.0.0-linux-arm64` - Linux ARM64
-- `gscex-v1.0.0-darwin-amd64` - macOS Intel
-- `gscex-v1.0.0-darwin-arm64` - macOS Apple Silicon
-- `gscex-v1.0.0-windows-amd64.exe` - Windows x64
+Download the latest binary from the [Releases](https://github.com/maxvanasten/gscex/releases) page. No installation required.
 
 **Linux/macOS:**
 ```bash
@@ -39,105 +32,107 @@ chmod +x gscex-v1.0.0-linux-amd64
 ```
 
 **Windows:**
-Just double-click or run from PowerShell:
 ```powershell
+# Run from PowerShell or Command Prompt
 gscex-v1.0.0-windows-amd64.exe init
 ```
 
 #### Build from Source
 
 ```bash
-# Clone the repository
 git clone https://github.com/maxvanasten/gscex.git
 cd gscex
-
-# Build
 go build -o gscex ./cmd/gscex/
-
-# Or install to $GOPATH/bin
-go install ./cmd/gscex/
 ```
 
 ### Usage
 
 ```bash
-# Initialize (download and index stock scripts for both T5 and T6)
-gscex init
+# Initialize (download and index stock scripts)
+gscex init              # Both T5 and T6
+gscex init t5           # Only Black Ops 1
+gscex init t6           # Only Black Ops 2
 
-# Or initialize only specific game
-gscex init t5    # Only Black Ops 1
-gscex init t6    # Only Black Ops 2
-
-# Launch interactive TUI browser (recommended)
+# Launch interactive TUI (recommended)
 gscex tui
 
-# Search across all games (default)
+# Search commands
 gscex search "magic bullet"
-
-# Search only specific game
-gscex --game t6 search "magic bullet"
-gscex --game t5 search "give_weapon"
-
-# Find function definition
 gscex func giveweapon
-
-# Search method calls
 gscex method player give_weapon
-
-# List files
 gscex files "_zm"
 
-# Show tool info
-gscex info
+# Search specific game
+gscex --game t6 search "player_damage"
 
-# Update scripts (both games by default)
+# Update scripts
 gscex update
-gscex update t6  # Update only T6
 ```
 
 ## Interactive TUI Mode
 
-The TUI provides the best experience for exploring GSC scripts:
+The TUI provides the most efficient way to explore GSC scripts:
 
 ```bash
 gscex tui
 ```
 
-**Keyboard Shortcuts:**
+### Keyboard Shortcuts
 
 | Key | Action |
 |-----|--------|
-| `?` | Toggle help |
 | `Tab` | Switch search mode (text/func/method/files) |
-| `Enter` | Execute search / Open result |
+| `Enter` | Execute search / Open file at line |
+| `Ctrl+F` | Focus search input |
 | `Ctrl+N` | Next result / Scroll down |
 | `Ctrl+P` | Previous result / Scroll up |
-| `Ctrl+F` | Focus search box |
 | `Ctrl+B` | Back to results |
-| `↑/↓` or `j/k` | Scroll in preview |
-| `PgUp/PgDn` | Page scroll |
-| `q` or `Esc` | Go back / Quit |
+| `?` | Toggle help overlay |
+| `Esc` or `q` | Go back / Quit |
 
-**Features:**
-- Live fuzzy search through all functions (T5 and T6)
-- Results sorted by file and line number
-- Current line highlighting in preview
-- Async loading (up to 100 results)
-- Smooth scrolling
-- Multi-game support (automatically shows stats for all indexed games)
+### Search Modes
 
-## Search Modes
+The TUI supports four search modes, cycled with `Tab`:
+
+1. **Text Search** - Find any text across all script files
+2. **Function Search** - Find function definitions and their usages
+3. **Method Search** - Find method calls on specific entities (e.g., `player give_weapon`)
+4. **File Search** - Browse and filter the complete file hierarchy
+
+### TUI Features
+
+- **Live search results** with context (2 lines before/after each match)
+- **Highlighted matches** displayed with `>>` prefix
+- **File preview** with line highlighting and keyboard navigation
+- **Multi-game support** - automatically loads all indexed games
+- **Stats display** showing indexed files, functions, and methods per game
+
+## CLI Commands
 
 ### Text Search
-Find any text across all 1,469 script files.
+
+Search for any text across all script files:
 
 ```bash
+# Basic search
 gscex search "player_damage"
+
+# JSON output for scripting
 gscex search "callback" --json
+
+# Limit results
+gscex search "magic" --max 50
+
+# Adjust context lines
+gscex search "weapon" --context 5
+
+# Files only (no content)
+gscex search "zombie" --files-only
 ```
 
 ### Function Search
-Find function definitions with fuzzy matching.
+
+Find function definitions with fuzzy matching:
 
 ```bash
 # Exact match
@@ -145,61 +140,83 @@ gscex func give_weapon
 
 # Fuzzy match (underscore-insensitive)
 gscex func giveweapon  # Finds give_weapon
+
+# JSON output with definition and all usages
+gscex func spawn --json
 ```
 
 ### Method Search
-Find method calls on specific entities.
+
+Find method calls on specific entities:
 
 ```bash
-# Format: "entity method"
+# Format: gscex method [entity] [method]
 gscex method player give_weapon
 gscex method zombie spawn
+gscex method self notify
+
+# JSON output
+gscex method player damage --json
 ```
 
 ### File Search
-Browse and search filenames.
+
+Browse and search filenames:
 
 ```bash
-gscex files "_zm"        # All zombie-related files
+# List all files matching pattern
+gscex files "_zm"        # Zombie-related files
 gscex files "gametype"   # Gametype scripts
+gscex files "main"       # Main scripts
+
+# JSON output
+gscex files "utility" --json
 ```
 
-## CLI Options
+### Other Commands
+
+```bash
+# Show tool and index information
+gscex info
+
+# Update scripts (pull latest and rebuild index)
+gscex update              # All games
+gscex update t6           # Specific game
+
+# Shell completion
+gscex completion bash     # Bash
+gscex completion zsh      # Zsh
+gscex completion fish     # Fish
+```
+
+## Global Flags
 
 All commands support these flags:
 
 ```bash
-# JSON output for scripting
---json, -j
+# Select specific game
+--game t5          # Black Ops 1 only
+--game t6          # Black Ops 2 only
+--game all         # Both games (default)
+
+# Use custom config
+--config /path/to/config.json
+```
+
+Search commands additionally support:
+
+```bash
+# JSON output
+-j, --json
 
 # Limit results
---max, -n 50
+-n, --max 50
 
 # Show context lines
---context, -c 3
+-c, --context 3
 
 # Files only (no content)
---files-only, -f
-
-# Select specific game (t5 or t6)
---game t5
---game t6
-```
-
-## Project Structure
-
-```
-gscex/
-├── cmd/gscex/          # Main application
-│   ├── main.go         # CLI commands
-│   └── tui.go          # Interactive TUI
-├── pkg/
-│   ├── config/         # Configuration management
-│   ├── git/            # Git operations
-│   ├── index/          # GSC parsing and indexing
-│   └── search/         # Search engine
-├── docs/               # Documentation
-└── scripts/            # Build scripts
+-f, --files-only
 ```
 
 ## Configuration
@@ -225,11 +242,26 @@ Config stored in `~/.gscex/config.json`:
 }
 ```
 
-**Game Selection:**
-- Use `--game t5` or `--game t6` flag to search specific game
-- Default searches all indexed games
-- T5 = Call of Duty: Black Ops (2010)
-- T6 = Call of Duty: Black Ops 2 (2012)
+**Settings:**
+- `max_results` - Default result limit for searches (can be overridden with `--max`)
+- `context_lines` - Lines of context around matches (default: 3, but TUI shows 2 before/after)
+- `default_game` - Preferred game when one is not specified
+
+## Project Structure
+
+```
+gscex/
+├── cmd/gscex/          # Main application
+│   ├── main.go         # CLI commands
+│   └── tui.go          # Interactive TUI
+├── pkg/
+│   ├── config/         # Configuration management
+│   ├── git/            # Git operations
+│   ├── index/          # GSC parsing and indexing
+│   └── search/         # Search engine
+├── docs/               # Documentation
+└── scripts/            # Build scripts
+```
 
 ## Development
 
@@ -240,7 +272,7 @@ go test ./...
 # Build for current platform
 go build -o gscex ./cmd/gscex/
 
-# Build all platforms
+# Build all platforms (requires GoReleaser or build script)
 ./scripts/build-release.sh v1.0.0
 ```
 
@@ -249,7 +281,7 @@ go build -o gscex ./cmd/gscex/
 - [Architecture](docs/01_architecture.md) - How gscex works
 - [Installation](docs/02_installation.md) - Detailed setup
 - [Usage Guide](docs/03_usage.md) - Complete command reference
-- [Stock Scripts](docs/04_stock_scripts.md) - Understanding T6 scripts
+- [Stock Scripts](docs/04_stock_scripts.md) - Understanding T5/T6 scripts
 - [Search Features](docs/05_search_features.md) - Advanced search
 - [Development](docs/06_development.md) - Contributing guide
 
@@ -258,16 +290,15 @@ go build -o gscex ./cmd/gscex/
 This tool indexes the official Plutonium stock scripts:
 
 **T6 (Black Ops 2):**
-- **1,469 files** across MP and ZM modes
-- **10,950+ functions** indexed
-- **10,246+ method calls** tracked
-- All core utilities, gametypes, and zombie scripts included
+- 1,469+ files across MP and ZM modes
+- 10,950+ functions indexed
+- 10,246+ method calls tracked
 
 **T5 (Black Ops 1):**
-- Stock scripts for multiplayer and zombies
-- Complete function and method indexing
+- Complete multiplayer and zombie scripts
+- Full function and method indexing
 
-Search works across all indexed games by default, or use `--game t5` or `--game t6` to filter.
+Search works across all indexed games by default. Use `--game t5` or `--game t6` to filter.
 
 ## License
 
