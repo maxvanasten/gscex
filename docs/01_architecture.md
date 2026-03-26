@@ -23,7 +23,7 @@
 
 ## Overview
 
-The GSC Reference CLI is a Go-based command-line tool that provides instant search capabilities over Plutonium T6 stock GSC scripts.
+The GSC Reference CLI is a Go-based command-line tool that provides instant search capabilities over Plutonium T5 and T6 stock GSC scripts.
 
 ```
 ┌─────────────────┐
@@ -35,7 +35,8 @@ The GSC Reference CLI is a Go-based command-line tool that provides instant sear
          ▼
 ┌─────────────────┐
 │  CLI Parser     │
-│  (cobra/urfave) │
+│  (cobra)        │
+│  --game flag    │
 └────────┬────────┘
          │
          ▼
@@ -44,17 +45,23 @@ The GSC Reference CLI is a Go-based command-line tool that provides instant sear
 │  - Function     │
 │  - Method       │
 │  - Text         │
+│  - Multi-game   │
 └────────┬────────┘
          │
          ▼
 ┌─────────────────┐
 │  Index Storage  │
-│  (embedded or   │
-│   local cache)  │
+│  (JSON cache)   │
+│  - index-t5.json│
+│  - index-t6.json│
 └────────┬────────┘
          │
          ▼
 ┌─────────────────┐
+│   T5 Scripts    │
+│  (plutoniummod  │
+│  /t5-scripts)   │
+├─────────────────┤
 │   T6 Scripts    │
 │  (plutoniummod  │
 │  /t6-scripts)   │
@@ -124,13 +131,17 @@ Commands:
 
 **Local cache:**
 - `~/.gscex/` - Config and index storage
-- `~/.gscex/scripts/` - Downloaded stock scripts
-- `~/.gscex/index.json` - Search index
+- `~/.gscex/scripts-t5/` - Downloaded Black Ops 1 stock scripts
+- `~/.gscex/scripts-t6/` - Downloaded Black Ops 2 stock scripts
+- `~/.gscex/index-t5.json` - T5 search index
+- `~/.gscex/index-t6.json` - T6 search index
+- `~/.gscex/config.json` - Configuration (includes game definitions)
 
-**Index auto-refresh:**
-- On first run: downloads and indexes
-- On subsequent runs: uses cached index
-- `update` command refreshes everything
+**Multi-game support:**
+- Supports both T5 (Black Ops 1) and T6 (Black Ops 2)
+- Separate indices and script directories per game
+- `--game` flag filters results to specific game
+- Default behavior searches all indexed games
 
 ---
 

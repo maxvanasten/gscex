@@ -65,32 +65,9 @@ for PLATFORM in "${PLATFORMS[@]}"; do
 done
 
 echo ""
-echo -e "${YELLOW}Creating archives...${NC}"
-echo ""
-
-cd "${DIST_DIR}"
-
-# Create tar.gz for Unix systems and zip for Windows
-for file in ${BINARY_NAME}-*; do
-    if [[ "$file" == *.exe ]]; then
-        # Windows - create zip
-        zip "${file%.exe}.zip" "$file"
-        rm "$file"
-        echo -e "  ${GREEN}✓${NC} ${file%.exe}.zip"
-    else
-        # Unix - create tar.gz
-        tar -czf "${file}.tar.gz" "$file"
-        rm "$file"
-        echo -e "  ${GREEN}✓${NC} ${file}.tar.gz"
-    fi
-done
-
-cd ..
-
-echo ""
 echo -e "${YELLOW}Generating checksums...${NC}"
 cd "${DIST_DIR}"
-sha256sum *.tar.gz *.zip > checksums.txt 2>/dev/null || shasum -a 256 *.tar.gz *.zip > checksums.txt
+sha256sum ${BINARY_NAME}-* > checksums.txt 2>/dev/null || shasum -a 256 ${BINARY_NAME}-* > checksums.txt
 cd ..
 echo -e "  ${GREEN}✓${NC} checksums.txt"
 
@@ -99,7 +76,7 @@ echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}  Build Complete!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
-echo -e "${BLUE}Artifacts in ${DIST_DIR}/${NC}:"
+echo -e "${BLUE}Binaries in ${DIST_DIR}/${NC}:"
 ls -lh "${DIST_DIR}"
 echo ""
 
@@ -110,13 +87,14 @@ if [ "$VERSION" != "dev" ] && command -v gh &> /dev/null; then
     echo
     
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        echo -e "${YELLOW}Creating GitHub release...${NC}"
+        echo -e "${YELLOW}Creating GitHub release with raw binaries...${NC}"
         
-        # Create release with notes
+        # Create release with raw binaries (no archives)
         gh release create "${VERSION}" \
             --title "gscex ${VERSION}" \
             --notes "Release ${VERSION}" \
-            ${DIST_DIR}/*
+            ${DIST_DIR}/${BINARY_NAME}-* \
+            ${DIST_DIR}/checksums.txt
         
         if [ $? -eq 0 ]; then
             echo ""
@@ -138,7 +116,7 @@ else
         echo -e "${BLUE}Manual release instructions:${NC}"
         echo -e "1. Go to: https://github.com/yourusername/gscex/releases/new"
         echo -e "2. Tag version: ${VERSION}"
-        echo -e "3. Upload files from ${DIST_DIR}/"
+        echo -e "3. Upload raw binaries from ${DIST_DIR}/"
     fi
 fi
 

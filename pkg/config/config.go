@@ -6,24 +6,45 @@ import (
 	"path/filepath"
 )
 
-type Config struct {
+type GameVersion string
+
+const (
+	GameT5 GameVersion = "t5"
+	GameT6 GameVersion = "t6"
+)
+
+type GameConfig struct {
 	ScriptsRepo   string `json:"scripts_repo"`
 	ScriptsBranch string `json:"scripts_branch"`
-	CacheDir      string `json:"cache_dir"`
-	AutoUpdate    bool   `json:"auto_update"`
-	MaxResults    int    `json:"max_results"`
-	ContextLines  int    `json:"context_lines"`
+}
+
+type Config struct {
+	Games        map[string]GameConfig `json:"games"`
+	CacheDir     string                `json:"cache_dir"`
+	AutoUpdate   bool                  `json:"auto_update"`
+	MaxResults   int                   `json:"max_results"`
+	ContextLines int                   `json:"context_lines"`
+	DefaultGame  string                `json:"default_game"`
 }
 
 func Default() *Config {
 	home, _ := os.UserHomeDir()
 	return &Config{
-		ScriptsRepo:   "https://github.com/plutoniummod/t6-scripts",
-		ScriptsBranch: "main",
-		CacheDir:      filepath.Join(home, ".gscex"),
-		AutoUpdate:    false,
-		MaxResults:    20,
-		ContextLines:  3,
+		Games: map[string]GameConfig{
+			"t5": {
+				ScriptsRepo:   "https://github.com/plutoniummod/t5-scripts",
+				ScriptsBranch: "main",
+			},
+			"t6": {
+				ScriptsRepo:   "https://github.com/plutoniummod/t6-scripts",
+				ScriptsBranch: "main",
+			},
+		},
+		CacheDir:     filepath.Join(home, ".gscex"),
+		AutoUpdate:   false,
+		MaxResults:   20,
+		ContextLines: 3,
+		DefaultGame:  "t6",
 	}
 }
 
@@ -31,12 +52,19 @@ func (c *Config) Path() string {
 	return filepath.Join(c.CacheDir, "config.json")
 }
 
-func (c *Config) ScriptsPath() string {
-	return filepath.Join(c.CacheDir, "scripts")
+func (c *Config) ScriptsPath(game string) string {
+	return filepath.Join(c.CacheDir, "scripts-"+game)
 }
 
-func (c *Config) IndexPath() string {
-	return filepath.Join(c.CacheDir, "index.json")
+func (c *Config) IndexPath(game string) string {
+	return filepath.Join(c.CacheDir, "index-"+game+".json")
+}
+
+func (c *Config) GetGameRepo(game string) (string, string) {
+	if gameCfg, ok := c.Games[game]; ok {
+		return gameCfg.ScriptsRepo, gameCfg.ScriptsBranch
+	}
+	return "", ""
 }
 
 func (c *Config) Save() error {

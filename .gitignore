@@ -1,0 +1,33 @@
+# Binaries
+gscex
+gsc-ref
+*.exe
+
+# Build artifacts
+dist/
+build/
+release/
+
+# Go
+vendor/
+*.test
+*.out
+coverage.txt
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+*.log
+
+# Don't ignore docs (they're tracked)
+!docs/*.md
+!docs/INDEX.md
