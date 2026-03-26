@@ -3,8 +3,11 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -83,6 +86,9 @@ type model struct {
 	// Data (support multiple games)
 	indices map[string]*index.Index
 	engines map[string]*search.Engine
+
+	// Config reference for accessing script paths
+	cfg *config.Config
 }
 
 func initialModel(gameFilter string) *model {
@@ -184,7 +190,7 @@ func (m *model) Init() tea.Cmd {
 			}
 			m.fileList.SetItems(items)
 
-			return loadedMsg{games: loadedGames}
+			return loadedMsg{games: loadedGames, cfg: cfg}
 		},
 	)
 }
@@ -195,9 +201,13 @@ type errMsg struct {
 
 type loadedMsg struct {
 	games []string
+	cfg   *config.Config
 }
 type searchMsg struct {
 	results []search.Result
+}
+type editorFinishedMsg struct {
+	err error
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -288,6 +298,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+b":
 			m.mode = modeResults
 			return m, nil
+
 		}
 
 	case errMsg:
@@ -302,6 +313,14 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if len(msg.results) > 0 {
 			m.mode = modeResults
 		}
+		return m, nil
+
+	case loadedMsg:
+		m.cfg = msg.cfg
+		return m, nil
+
+	case editorFinishedMsg:
+		// Editor closed, just resume
 		return m, nil
 	}
 
@@ -327,6 +346,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "pgup":
 				for i := 0; i < 10; i++ {
 					m.scrollUp()
+				}
+			case "v":
+				if m.currentFile != "" {
+					return m, m.openEditor()
 				}
 			}
 		}
@@ -552,6 +575,65 @@ func (m *model) scrollUp() {
 	}
 }
 
+func (m *model) openEditor() tea.Cmd {
+	return func() tea.Msg {
+		if m.cfg == nil {
+			return editorFinishedMsg{err: fmt.Errorf("config not loaded")}
+		}
+
+		// Parse game prefix from currentFile (e.g., "[t6] some/file.gsc")
+		game := ""
+		actualFile := m.currentFile
+		if strings.HasPrefix(m.currentFile, "[") {
+			idx := strings.Index(m.currentFile, "]")
+			if idx > 0 {
+				game = m.currentFile[1:idx]
+				actualFile = strings.TrimSpace(m.currentFile[idx+1:])
+			}
+		}
+
+		// Determine game if not prefixed
+		if game == "" {
+			for g := range m.indices {
+				game = g
+				break
+			}
+		}
+
+		if game == "" {
+			return editorFinishedMsg{err: fmt.Errorf("no game found")}
+		}
+
+		// Build source path
+		sourcePath := filepath.Join(m.cfg.ScriptsPath(game), actualFile)
+
+		// Create temp directory with timestamp
+		tempDir := filepath.Join(os.TempDir(), fmt.Sprintf("gscex-%d", time.Now().Unix()))
+		if err := os.MkdirAll(tempDir, 0755); err != nil {
+			return editorFinishedMsg{err: fmt.Errorf("failed to create temp dir: %w", err)}
+		}
+
+		// Copy file to temp location
+		content, err := os.ReadFile(sourcePath)
+		if err != nil {
+			return editorFinishedMsg{err: fmt.Errorf("failed to read source file: %w", err)}
+		}
+
+		tempPath := filepath.Join(tempDir, filepath.Base(actualFile))
+		if err := os.WriteFile(tempPath, content, 0644); err != nil {
+			return editorFinishedMsg{err: fmt.Errorf("failed to write temp file: %w", err)}
+		}
+
+		// Build neovim command with line number
+		cmd := exec.Command("nvim", fmt.Sprintf("+%d", m.currentLine), tempPath)
+
+		// Execute neovim and wait for it to finish
+		return tea.ExecProcess(cmd, func(err error) tea.Msg {
+			return editorFinishedMsg{err: err}
+		})()
+	}
+}
+
 func (m *model) View() string {
 	if m.showHelp {
 		return m.helpView()
@@ -751,7 +833,7 @@ func (m *model) previewView() string {
 		MarginTop(1)
 
 	scrollInfo := fmt.Sprintf("Line %d/%d", m.scrollOffset+1, len(m.fileContent))
-	help := fmt.Sprintf("↑/↓ or j/k: scroll | PgUp/PgDn: page | Q: back | ?: help | %s", scrollInfo)
+	help := fmt.Sprintf("↑/↓ or j/k: scroll | PgUp/PgDn: page | V: open in nvim | Q: back | ?: help | %s", scrollInfo)
 	sb.WriteString("\n  " + helpStyle.Render(help))
 
 	return sb.String()
@@ -793,6 +875,7 @@ Results Mode:
 Preview Mode:
   ↑/↓, j/k   Scroll up/down
   pgup/pgdn  Page up/down
+  v          Open in neovim (temp copy)
   q          Back to results
 
 Search Types:
