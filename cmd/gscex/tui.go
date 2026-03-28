@@ -306,8 +306,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case "q":
-			// Block 'q' when typing in an input field
-			if m.isInputFocused() {
+			// Block 'q' only when in search mode with focused input
+			if m.mode == modeSearch && m.isInputFocused() {
 				return m, nil
 			}
 			if m.mode != modeSearch {
@@ -318,8 +318,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case "?":
-			// Block '?' when typing in an input field
-			if m.isInputFocused() {
+			// Block '?' only when in search mode with focused input
+			if m.mode == modeSearch && m.isInputFocused() {
 				return m, nil
 			}
 			m.showHelp = !m.showHelp
