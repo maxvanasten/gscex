@@ -350,6 +350,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.isSearching = false
 				return m, nil
 			}
+			// Unfocus any focused input
+			if m.isInputFocused() {
+				m.searchInput.Blur()
+				m.fileFilterInput.Blur()
+				return m, nil
+			}
 			if m.mode != modeSearch {
 				m.mode = modeSearch
 				m.searchInput.Focus()
