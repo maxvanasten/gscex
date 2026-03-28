@@ -45,6 +45,16 @@ func (i resultItem) Title() string { return fmt.Sprintf("%s:%d", i.result.File, 
 func (i resultItem) Description() string {
 	ctx := i.result.Context
 
+	// If no context and Line is set, this is a file-only result - show line count
+	if len(ctx) == 0 && i.result.Line > 0 {
+		return fmt.Sprintf("%d lines", i.result.Line)
+	}
+
+	// If no context but Line is 0, show content if available
+	if len(ctx) == 0 {
+		return i.result.Content
+	}
+
 	// Need at least 6 lines from 7-line context (3 before + matched + 3 after)
 	// With default ContextLines=3, matched is at index 3, we want indices 1-5
 	if len(ctx) < 6 {
@@ -82,7 +92,9 @@ type model struct {
 	searchInput textinput.Model
 
 	// Results list
-	resultsList list.Model
+	resultsList     list.Model
+	contextDelegate list.DefaultDelegate
+	compactDelegate list.DefaultDelegate
 
 	// File list (for browsing)
 	fileList list.Model
@@ -110,6 +122,14 @@ type model struct {
 	cfg *config.Config
 }
 
+func (m *model) setResultsDelegate() {
+	if m.searchType == "files" {
+		m.resultsList.SetDelegate(m.compactDelegate)
+	} else {
+		m.resultsList.SetDelegate(m.contextDelegate)
+	}
+}
+
 func initialModel(gameFilter string) *model {
 	m := &model{
 		mode:       modeSearch,
@@ -125,13 +145,21 @@ func initialModel(gameFilter string) *model {
 	ti.Width = 50
 	m.searchInput = ti
 
-	// Initialize results list with custom delegate for multiline context
-	delegate := list.NewDefaultDelegate()
-	delegate.SetHeight(6) // 1 line for title + 5 lines for description with context
-	m.resultsList = list.New([]list.Item{}, delegate, 0, 0)
+	// Create delegates for different search types
+	contextDelegate := list.NewDefaultDelegate()
+	contextDelegate.SetHeight(6) // 1 line for title + 5 lines for description with context
+
+	compactDelegate := list.NewDefaultDelegate()
+	compactDelegate.SetHeight(2) // 1 line for title + 1 line for file info
+
+	m.resultsList = list.New([]list.Item{}, contextDelegate, 0, 0)
 	m.resultsList.Title = "Search Results"
 	m.resultsList.SetShowStatusBar(false)
 	m.resultsList.SetFilteringEnabled(false)
+
+	// Store delegates for switching
+	m.contextDelegate = contextDelegate
+	m.compactDelegate = compactDelegate
 
 	// Initialize file list
 	m.fileList = list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
@@ -274,6 +302,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.searchType = "text"
 				m.searchInput.Placeholder = "Search for text, functions, or methods..."
 			}
+			m.setResultsDelegate()
 			return m, nil
 
 		case "esc":
@@ -494,15 +523,22 @@ func (m *model) performSearch() tea.Cmd {
 			case "files":
 				files := eng.ListFiles(query)
 				for _, f := range files {
+					// Get line count from index
+					lineCount := 0
+					if idx, ok := m.indices[game]; ok {
+						if raw, ok := idx.Raw[f]; ok {
+							lineCount = strings.Count(raw, "\n") + 1
+						}
+					}
 					if len(m.engines) > 1 {
 						results = append(results, search.Result{
 							File: fmt.Sprintf("[%s] %s", game, f),
-							Line: 0,
+							Line: lineCount,
 						})
 					} else {
 						results = append(results, search.Result{
 							File: f,
-							Line: 0,
+							Line: lineCount,
 						})
 					}
 				}
