@@ -512,7 +512,7 @@ func (m *model) performSearch() tea.Cmd {
 		}
 
 		opts := search.Options{
-			MaxResults:   100,
+			MaxResults:   10000,
 			ContextLines: 3,
 		}
 

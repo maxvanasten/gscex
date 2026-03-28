@@ -3,6 +3,7 @@ package search
 import (
 	"fmt"
 	"gscex/pkg/index"
+	"sort"
 	"strings"
 )
 
@@ -162,7 +163,15 @@ func (e *Engine) SearchText(pattern string, opts Options) []Result {
 	pattern = strings.ToLower(pattern)
 	var results []Result
 
-	for file, raw := range e.idx.Raw {
+	// Sort files for consistent, predictable search order
+	var files []string
+	for file := range e.idx.Raw {
+		files = append(files, file)
+	}
+	sort.Strings(files)
+
+	for _, file := range files {
+		raw := e.idx.Raw[file]
 		lines := strings.Split(raw, "\n")
 		for i, line := range lines {
 			if strings.Contains(strings.ToLower(line), pattern) {

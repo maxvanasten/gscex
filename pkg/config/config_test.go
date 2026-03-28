@@ -33,7 +33,7 @@ func TestDefault(t *testing.T) {
 		t.Errorf("wrong t5 branch: %s", t5Game.ScriptsBranch)
 	}
 
-	if cfg.MaxResults != 20 {
+	if cfg.MaxResults != 10000 {
 		t.Errorf("wrong max results: %d", cfg.MaxResults)
 	}
 

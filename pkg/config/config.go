@@ -42,7 +42,7 @@ func Default() *Config {
 		},
 		CacheDir:     filepath.Join(home, ".gscex"),
 		AutoUpdate:   false,
-		MaxResults:   20,
+		MaxResults:   10000,
 		ContextLines: 3,
 		DefaultGame:  "t6",
 	}
