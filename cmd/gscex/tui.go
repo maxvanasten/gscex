@@ -91,6 +91,10 @@ type model struct {
 	// Search input
 	searchInput textinput.Model
 
+	// File filter input (shows file filter when activated)
+	fileFilterInput textinput.Model
+	showFileFilter  bool
+
 	// Results list
 	resultsList     list.Model
 	contextDelegate list.DefaultDelegate
@@ -144,6 +148,13 @@ func initialModel(gameFilter string) *model {
 	ti.CharLimit = 156
 	ti.Width = 50
 	m.searchInput = ti
+
+	// Initialize file filter input
+	fi := textinput.New()
+	fi.Placeholder = "Filter by filename (e.g., zm_tomb)..."
+	fi.CharLimit = 100
+	fi.Width = 40
+	m.fileFilterInput = fi
 
 	// Create delegates for different search types
 	contextDelegate := list.NewDefaultDelegate()
@@ -341,8 +352,22 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "ctrl+f":
-			m.mode = modeSearch
-			m.searchInput.Focus()
+			// Toggle file filter visibility and focus
+			if !m.showFileFilter {
+				// Show filter and focus it
+				m.showFileFilter = true
+				m.mode = modeSearch
+				m.fileFilterInput.Focus()
+				m.searchInput.Blur()
+			} else if m.fileFilterInput.Focused() {
+				// Switch focus back to search input
+				m.fileFilterInput.Blur()
+				m.searchInput.Focus()
+			} else {
+				// Focus filter input
+				m.fileFilterInput.Focus()
+				m.searchInput.Blur()
+			}
 			return m, nil
 
 		case "ctrl+b":
@@ -378,6 +403,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	if m.mode == modeSearch {
 		m.searchInput, cmd = m.searchInput.Update(msg)
+		m.fileFilterInput, _ = m.fileFilterInput.Update(msg)
 	} else if m.mode == modeResults {
 		m.resultsList, cmd = m.resultsList.Update(msg)
 	} else if m.mode == modePreview {
@@ -554,6 +580,27 @@ func (m *model) performSearch() tea.Cmd {
 			}
 			return allResults[i].File < allResults[j].File
 		})
+
+		// Apply file filter if active
+		fileFilter := m.fileFilterInput.Value()
+		if fileFilter != "" {
+			fileFilterLower := strings.ToLower(fileFilter)
+			var filtered []search.Result
+			for _, r := range allResults {
+				// Extract actual filename (remove game prefix if present)
+				fileName := r.File
+				if strings.HasPrefix(fileName, "[") {
+					idx := strings.Index(fileName, "]")
+					if idx > 0 {
+						fileName = strings.TrimSpace(fileName[idx+1:])
+					}
+				}
+				if strings.Contains(strings.ToLower(fileName), fileFilterLower) {
+					filtered = append(filtered, r)
+				}
+			}
+			allResults = filtered
+		}
 
 		return searchMsg{results: allResults}
 	}
@@ -752,6 +799,20 @@ func (m *model) searchView() string {
 
 	sb.WriteString(inputStyle.Render(m.searchInput.View()))
 
+	// File filter input (if visible)
+	if m.showFileFilter {
+		filterStyle := lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(borderColor).
+			Padding(1).
+			Width(m.width - 4).
+			MarginTop(1)
+		if m.fileFilterInput.Focused() {
+			filterStyle = filterStyle.BorderForeground(selectedColor)
+		}
+		sb.WriteString("\n" + filterStyle.Render(m.fileFilterInput.View()))
+	}
+
 	// Quick stats
 	if len(m.engines) > 0 {
 		statsStyle := lipgloss.NewStyle().
@@ -803,7 +864,7 @@ func (m *model) resultsView() string {
 		Foreground(dimColor).
 		MarginTop(1)
 
-	sb.WriteString("\n  " + helpStyle.Render("Enter: view | Ctrl+F: search | Ctrl+N/P: navigate | Q: back | ?: help"))
+	sb.WriteString("\n  " + helpStyle.Render("Enter: view | Ctrl+F: file filter | Ctrl+N/P: navigate | Q: back | ?: help"))
 
 	return sb.String()
 }
@@ -923,6 +984,12 @@ Global:
 Search Mode:
   tab        Switch search type (text/func/method/files)
   enter      Execute search
+  ctrl+f     Toggle file filter input (show/hide)
+
+File Filter:
+  Filter results to only show files matching substring
+  e.g., "zm_tomb" filters to tomb map files
+  Persists across searches until cleared
 
 Results Mode:
   ctrl+n     Next result
