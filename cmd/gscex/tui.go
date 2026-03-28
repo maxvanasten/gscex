@@ -124,6 +124,10 @@ type model struct {
 
 	// Config reference for accessing script paths
 	cfg *config.Config
+
+	// Search state
+	isSearching  bool
+	spinnerFrame int
 }
 
 func (m *model) setResultsDelegate() {
@@ -270,6 +274,14 @@ type editorFinishedMsg struct {
 	err error
 }
 
+type spinnerMsg struct{}
+
+func (m *model) spinnerTick() tea.Cmd {
+	return tea.Tick(time.Millisecond*100, func(t time.Time) tea.Msg {
+		return spinnerMsg{}
+	})
+}
+
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -317,6 +329,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "esc":
+			if m.isSearching {
+				// Cancel search
+				m.isSearching = false
+				return m, nil
+			}
 			if m.mode != modeSearch {
 				m.mode = modeSearch
 				m.searchInput.Focus()
@@ -325,13 +342,21 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "enter":
 			if m.mode == modeSearch {
+				// Prevent duplicate searches while one is in progress
+				if m.isSearching {
+					return m, nil
+				}
+
 				if m.fileFilterInput.Focused() {
 					// Blur filter and focus search, then execute search
 					m.fileFilterInput.Blur()
 					m.searchInput.Focus()
-					return m, m.performSearch()
 				}
-				return m, m.performSearch()
+
+				// Start search with loading state
+				m.isSearching = true
+				m.spinnerFrame = 0
+				return m, tea.Batch(m.performSearch(), m.spinnerTick())
 			} else if m.mode == modeResults {
 				if item, ok := m.resultsList.SelectedItem().(resultItem); ok {
 					m.currentFile = item.result.File
@@ -387,9 +412,18 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case errMsg:
+		m.isSearching = false
 		return m, tea.Quit
 
+	case spinnerMsg:
+		if m.isSearching {
+			m.spinnerFrame = (m.spinnerFrame + 1) % 4
+			return m, m.spinnerTick()
+		}
+		return m, nil
+
 	case searchMsg:
+		m.isSearching = false
 		var items []list.Item
 		for _, r := range msg.results {
 			items = append(items, resultItem{result: r})
@@ -774,6 +808,59 @@ func (m *model) searchView() string {
 		return "Loading..."
 	}
 
+	// Show spinner when searching
+	if m.isSearching {
+		var sb strings.Builder
+
+		headerStyle := lipgloss.NewStyle().
+			Background(accentColor).
+			Foreground(bgColor).
+			Bold(true).
+			Padding(0, 2).
+			Width(m.width)
+
+		sb.WriteString(headerStyle.Render("GSC Reference Browser - Press ? for help"))
+		sb.WriteString("\n\n")
+
+		// Spinner frames
+		spinnerFrames := []string{"◐", "◓", "◑", "◒"}
+		spinner := spinnerFrames[m.spinnerFrame]
+
+		loadingStyle := lipgloss.NewStyle().
+			Foreground(accentColor).
+			Bold(true).
+			MarginTop(2).
+			MarginLeft(2)
+
+		sb.WriteString(loadingStyle.Render(fmt.Sprintf("%s Searching...", spinner)))
+
+		// Show what we're searching for
+		query := m.searchInput.Value()
+		if query != "" {
+			queryStyle := lipgloss.NewStyle().
+				Foreground(textColor).
+				MarginLeft(2)
+			sb.WriteString("\n" + queryStyle.Render(fmt.Sprintf("Looking for: %s", query)))
+		}
+
+		// Show file filter if active
+		if m.fileFilterInput.Value() != "" {
+			filterStyle := lipgloss.NewStyle().
+				Foreground(dimColor).
+				MarginLeft(2)
+			sb.WriteString("\n" + filterStyle.Render(fmt.Sprintf("Filter: %s", m.fileFilterInput.Value())))
+		}
+
+		// Help text
+		helpStyle := lipgloss.NewStyle().
+			Foreground(dimColor).
+			MarginTop(2).
+			MarginLeft(2)
+		sb.WriteString("\n" + helpStyle.Render("Press Esc to cancel"))
+
+		return sb.String()
+	}
+
 	var sb strings.Builder
 
 	// Header
@@ -999,6 +1086,12 @@ Search Mode:
   tab        Switch search type (text/func/method/files)
   enter      Execute search
   ctrl+f     Toggle file filter input (show/hide)
+  esc        Cancel search (when loading)
+
+Search Loading:
+  Shows spinner while searching
+  Enter blocked during search to prevent duplicates
+  Press Esc to cancel an in-progress search
 
 File Filter:
   Filter results to only show files matching substring
