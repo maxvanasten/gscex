@@ -130,6 +130,10 @@ type model struct {
 	spinnerFrame int
 }
 
+func (m *model) isInputFocused() bool {
+	return m.searchInput.Focused() || m.fileFilterInput.Focused()
+}
+
 func (m *model) setResultsDelegate() {
 	if m.searchType == "files" {
 		m.resultsList.SetDelegate(m.compactDelegate)
@@ -297,7 +301,15 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		// Global shortcuts
 		switch msg.String() {
-		case "ctrl+c", "q":
+		case "ctrl+c":
+			// Always allow Ctrl+C to quit
+			return m, tea.Quit
+
+		case "q":
+			// Block 'q' when typing in an input field
+			if m.isInputFocused() {
+				return m, nil
+			}
 			if m.mode != modeSearch {
 				m.mode = modeSearch
 				m.searchInput.Focus()
@@ -306,6 +318,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case "?":
+			// Block '?' when typing in an input field
+			if m.isInputFocused() {
+				return m, nil
+			}
 			m.showHelp = !m.showHelp
 			return m, nil
 
