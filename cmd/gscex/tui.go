@@ -325,6 +325,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "enter":
 			if m.mode == modeSearch {
+				if m.fileFilterInput.Focused() {
+					// Blur filter and focus search, then execute search
+					m.fileFilterInput.Blur()
+					m.searchInput.Focus()
+					return m, m.performSearch()
+				}
 				return m, m.performSearch()
 			} else if m.mode == modeResults {
 				if item, ok := m.resultsList.SelectedItem().(resultItem); ok {
@@ -363,6 +369,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Switch focus back to search input
 				m.fileFilterInput.Blur()
 				m.searchInput.Focus()
+				// Hide filter if empty
+				if m.fileFilterInput.Value() == "" {
+					m.showFileFilter = false
+				}
 			} else {
 				// Focus filter input
 				m.fileFilterInput.Focus()
@@ -402,8 +412,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Update sub-components based on mode
 	var cmd tea.Cmd
 	if m.mode == modeSearch {
-		m.searchInput, cmd = m.searchInput.Update(msg)
-		m.fileFilterInput, _ = m.fileFilterInput.Update(msg)
+		// Only update the focused input
+		if m.fileFilterInput.Focused() {
+			m.fileFilterInput, cmd = m.fileFilterInput.Update(msg)
+		} else {
+			m.searchInput, cmd = m.searchInput.Update(msg)
+		}
 	} else if m.mode == modeResults {
 		m.resultsList, cmd = m.resultsList.Update(msg)
 	} else if m.mode == modePreview {
